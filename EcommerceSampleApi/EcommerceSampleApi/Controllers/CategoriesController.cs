@@ -1,7 +1,7 @@
 ﻿using EcommerceSampleApi.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace EcommerceSampleApi.Controllers
 {
@@ -16,8 +16,10 @@ namespace EcommerceSampleApi.Controllers
             _dbContext = new ApiDbContext();
         }
 
-        
+
         [HttpGet]
+        [Authorize]
+
         public IActionResult Get()
         {
             return Ok(_dbContext.Categories);

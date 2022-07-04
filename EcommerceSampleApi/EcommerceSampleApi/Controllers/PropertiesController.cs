@@ -1,5 +1,6 @@
 ﻿using EcommerceSampleApi.Data;
 using EcommerceSampleApi.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -7,6 +8,7 @@ namespace EcommerceSampleApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class PropertiesController : ControllerBase
     {
         private ApiDbContext _dbContext;
@@ -50,8 +52,6 @@ namespace EcommerceSampleApi.Controllers
 
             return Ok(propertyResult);
         }
-
-
 
         [HttpGet("[action]")]
         public IActionResult Search(string location)
