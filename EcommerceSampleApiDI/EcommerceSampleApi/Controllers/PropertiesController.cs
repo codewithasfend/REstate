@@ -1,4 +1,5 @@
 ﻿using EcommerceSampleApi.Data;
+using EcommerceSampleApi.Interfaces;
 using EcommerceSampleApi.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,106 +12,94 @@ namespace EcommerceSampleApi.Controllers
     [Authorize]
     public class PropertiesController : ControllerBase
     {
-        private ApiDbContext _dbContext;
-        public PropertiesController()
+        private IPropertyService _propertyService;
+        public PropertiesController(IPropertyService propertyService)
         {
-            _dbContext = new ApiDbContext();
+            _propertyService = propertyService;
         }
 
         [HttpGet("PropertyList")]
-        public IActionResult GetProperties(int categoryId)
+        public async Task<IActionResult> GetProperties(int categoryId)
         {
-            var propertyResult = _dbContext.Properties.Where(x => x.CategoryId == categoryId);
-            if (propertyResult == null)
+            var propertyResult = await _propertyService.GetAllProperties(categoryId);
+            if (!propertyResult.IsSuccess)
             {
                 return StatusCode(StatusCodes.Status404NotFound);
             }
 
-            return Ok(propertyResult);
+            return Ok(propertyResult.Properties);
         }
 
         [HttpGet("PropertyDetail")]
-        public IActionResult GetPropertyDetail(int id)
+        public async Task<IActionResult> GetPropertyDetail(int id)
         {
-            var propertyResult = _dbContext.Properties.FirstOrDefault(x => x.Id == id);
-            if (propertyResult == null)
+            var propertyResult = await _propertyService.GetPropertyDetail(id);
+            if (!propertyResult.IsSuccess)
             {
                 return StatusCode(StatusCodes.Status404NotFound);
             }
 
-            return Ok(propertyResult);
+            return Ok(propertyResult.Property);
         }
 
         [HttpGet("TrendingProperty")]
-        public IActionResult GetTrendingProperties()
+        public async Task<IActionResult> GetTrendingProperties()
         {
-            var propertyResult = _dbContext.Properties.Where(x => x.IsTrending);
-            if (propertyResult == null)
+            var propertyResult = await _propertyService.GetTrendingProperties();
+            if (!propertyResult.IsSuccess)
             {
                 return StatusCode(StatusCodes.Status404NotFound);
             }
 
-            return Ok(propertyResult);
+            return Ok(propertyResult.Properties);
         }
 
         [HttpGet("[action]")]
-        public IActionResult Search(string location)
+        public async Task<IActionResult> Search(string location)
         {
-            var propertyResult = _dbContext.Properties.Where(x => x.Address.Contains(location));
-            if (propertyResult == null)
+            var propertyResult = await _propertyService.SearchProperty(location);
+            if (!propertyResult.IsSuccess)
             {
                 return StatusCode(StatusCodes.Status404NotFound);
             }
 
-            return Ok(propertyResult);
+            return Ok(propertyResult.Properties);
         }
 
         [HttpPost]
-        public IActionResult Post([FromBody] Property property)
+        public async Task<IActionResult> Post([FromBody] Property property)
         {
-            if (property == null)
+            var userEmail = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+            if (property == null && string.IsNullOrEmpty(userEmail))
             {
                 return StatusCode(StatusCodes.Status204NoContent);
             }
+
             else
             {
-                var userEmail = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-                var user = _dbContext.Users.FirstOrDefault(x => x.Email == userEmail);
-                if (user == null) return NotFound();
+                var user = await _propertyService.AddProperty(property, userEmail);
 
-                property.UserId = user.Id;
-                property.IsTrending = false;
-                _dbContext.Properties.Add(property);
-                _dbContext.SaveChanges();
+                if (!user) return NotFound();
+
                 return StatusCode(StatusCodes.Status201Created);
             }
         }
 
         [HttpPut("{id}")]
-        public IActionResult Put(int id, [FromBody] Property property)
+        public async Task<IActionResult> Put(int id, [FromBody] Property property)
         {
-            var propertyResult = _dbContext.Properties.FirstOrDefault(p => p.Id == id);
-            if (propertyResult == null)
+            var userEmail = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+            var propertyResult = await _propertyService.UpdateProperty(id, property, userEmail);
+            if (!propertyResult)
             {
                 return NotFound();
             }
             else
             {
-                var userEmail = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-                var user = _dbContext.Users.FirstOrDefault(x => x.Email == userEmail);
-                if (user != null)
+                if (propertyResult == true)
                 {
-                    if (propertyResult.UserId == user.Id)
-                    {
-                        propertyResult.Name = property.Name;
-                        propertyResult.Detail = property.Detail;
-                        propertyResult.Price = property.Price;
-                        propertyResult.Address = property.Address;
-                        _dbContext.SaveChanges();
-                        return Ok("Record updated successfully");
-                    }
-                    else
-                        return BadRequest();
+                    return Ok("Record updated successfully...");
+
                 }
                 return NotFound();
             }
@@ -118,29 +107,20 @@ namespace EcommerceSampleApi.Controllers
 
 
         [HttpDelete("{id}")]
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var propertyResult = _dbContext.Properties.Find(id);
-            if (propertyResult == null)
+            var userEmail = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+            var propertyResult = await _propertyService.DeleteProperty(id, userEmail);
+            if (!propertyResult)
             {
                 return NotFound();
             }
             else
             {
-                var userEmail = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-                var user = _dbContext.Users.FirstOrDefault(x => x.Email == userEmail);
-                if (user != null)
+                if (propertyResult == true)
                 {
-                    if (propertyResult.UserId == user.Id)
-                    {
-                        _dbContext.Properties.Remove(propertyResult);
-                        _dbContext.SaveChanges();
-                        return Ok("Record deleted successfully");
-                    }
-                    else
-                        return BadRequest();
+                    return Ok("Record deleted successfully");
                 }
-
                 return NotFound();
             }
         }

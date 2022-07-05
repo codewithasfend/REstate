@@ -1,4 +1,5 @@
 ﻿using EcommerceSampleApi.Data;
+using EcommerceSampleApi.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,20 +10,17 @@ namespace EcommerceSampleApi.Controllers
     [ApiController]
     public class CategoriesController : ControllerBase
     {
-
-        private ApiDbContext _dbContext;
-        public CategoriesController()
+        private ICategoryService _categoryService;
+        public CategoriesController(ICategoryService categoryService)
         {
-            _dbContext = new ApiDbContext();
+            _categoryService = categoryService;
         }
-
 
         [HttpGet]
         [Authorize]
-
         public IActionResult Get()
         {
-            return Ok(_dbContext.Categories);
+            return Ok(_categoryService.Getcategories());
         }
 
     }

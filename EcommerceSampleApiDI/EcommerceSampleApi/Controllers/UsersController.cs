@@ -1,4 +1,5 @@
 ﻿using EcommerceSampleApi.Data;
+using EcommerceSampleApi.Interfaces;
 using EcommerceSampleApi.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -12,23 +13,22 @@ namespace EcommerceSampleApi.Controllers
     [ApiController]
     public class UsersController : ControllerBase
     {
-        private ApiDbContext _dbContext;
+        private IUserService _userService;
         private IConfiguration _config;
-        public UsersController(IConfiguration config)
+        public UsersController(IConfiguration config , IUserService userService)
         {
-            _dbContext = new ApiDbContext();
             _config = config;
+            _userService = userService; 
         }
-
 
         [HttpPost]
         [Route("Login")]
-        public IActionResult Login([FromBody] UserLogin userLogin)
+        public async Task<IActionResult> Login([FromBody] UserLogin userLogin)
         {
-            var user = Authenticate(userLogin);
-            if (user != null)
+            var result = await _userService.LoginUser(userLogin);
+            if (result.IsSuccess)
             {
-                var token = GenerateToken(user);
+                var token = GenerateToken(result.user);
                 return Ok(token);
             }
             return NotFound("User not found");
@@ -55,27 +55,16 @@ namespace EcommerceSampleApi.Controllers
 
         }
 
-        private User Authenticate(UserLogin userLogin)
-        {
-            var currentUser = _dbContext.Users.FirstOrDefault(u => u.Email == userLogin.Email && u.Password == userLogin.Password);
-            if (currentUser != null)
-            {
-                return currentUser;
-            }
-            return null;
-        }
-
         [HttpPost]
         [Route("Register")]
-        public IActionResult Register([FromBody] User user)
+        public async Task<IActionResult> Register([FromBody] User user)
         {
-            var userExists = _dbContext.Users.FirstOrDefault(u => u.Email == user.Email);
-            if (userExists != null)
+            var result = await _userService.RegisterUser(user);
+            if (!result)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
-            var userCreated = _dbContext.Users.Add(user);
-            _dbContext.SaveChanges();
+           
             return Ok("User Created Successfully");
 
         }
